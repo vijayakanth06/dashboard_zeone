@@ -1,6 +1,5 @@
-const User = require('../models/User');
 const PDFDocument = require('pdfkit');
-const fs = require('fs');
+const User = require('../models/User');
 const path = require('path');
 
 exports.createUser = async (req, res) => {
@@ -89,66 +88,68 @@ exports.getAverageScoresAndDurations = async (req, res) => {
   }
 };
 
-exports.exportUserConversationsToPDF = async (req, res) => {
+exports.getAverageScores = async (req, res) => {
   try {
-   
-    const users = await User.find();
+    const results = await User.aggregate([
+      {
+        $group: {
+          _id: '$name',
+          averageScore: { $avg: '$score' },
+        },
+      },
+      {
+        $project: {
+          _id: 0,
+          name: '$_id',
+          averageScore: { $round: ['$averageScore', 2] },
+        },
+      },
+    ]);
 
-    const groupedUsers = users.reduce((acc, user) => {
-      if (!acc[user.name]) {
-        acc[user.name] = [];
-      }
-      acc[user.name].push({ user_msg: user.user_msg, ai: user.ai });
-      return acc;
-    }, {});
-
-    const exportDir = path.join(__dirname, '..', 'exports');
-    if (!fs.existsSync(exportDir)) {
-      fs.mkdirSync(exportDir);
-    }
-
-    const pdfPaths = [];
-
-    for (const [name, conversations] of Object.entries(groupedUsers)) {
-      const doc = new PDFDocument({ margin: 40 });
-      const fileName = `${name.replace(/ /g, '_')}_${Date.now()}.pdf`;
-      const filePath = path.join(exportDir, fileName);
-      pdfPaths.push(filePath);
-
-      const writeStream = fs.createWriteStream(filePath);
-      doc.pipe(writeStream);
-
-      doc.fontSize(20).font('Helvetica-Bold').text(`Conversation with ${name}`, { align: 'center' });
-      doc.moveDown(1);
-
-      doc.fontSize(14).font('Helvetica-Bold').text('Name:', { continued: true });
-      doc.fontSize(14).font('Helvetica').text(` ${name}`);
-      doc.moveDown(0.5);
-
-      doc.fontSize(12).font('Helvetica-Bold').text('User Message', { continued: false });
-      doc.moveDown(0.2);
-      doc.fontSize(12).font('Helvetica-Bold').text('AI Response', { continued: false });
-      doc.moveDown(0.5);
-      
-      conversations.forEach((conv, index) => {
-        doc.fontSize(12).font('Helvetica-Bold').text(`User Message ${index + 1}:`, { continued: true });
-        doc.fontSize(12).font('Helvetica').text(`${conv.user_msg}`);
-        doc.moveDown(0.3);
-        doc.fontSize(12).font('Helvetica-Bold').text(`AI Response ${index + 1}:`, { continued: true });
-        doc.fontSize(12).font('Helvetica').text(`${conv.ai}`);
-        doc.moveDown(0.8);
-      });
-
-      doc.end();
-
-      await new Promise((resolve, reject) => {
-        writeStream.on('finish', resolve);
-        writeStream.on('error', reject);
-      });
-    }
-
-    res.status(200).json({ message: 'PDFs generated successfully', files: pdfPaths });
+    res.status(200).json(results);
   } catch (error) {
     res.status(500).json({ message: error.message });
+  }
+};
+
+
+exports.exportUserConversationsToPDF = async (req, res) => {
+  try {
+    const userName = req.query.name?.trim();
+    if (!userName) {
+      return res.status(400).json({ message: 'Invalid or missing user name' });
+    }
+
+    const userConversations = await User.find({ name: userName });
+
+    if (!userConversations || userConversations.length === 0) {
+      return res.status(404).json({ message: 'No conversations found for the user' });
+    }
+
+    const sanitizedFileName = `${userName.replace(/ /g, '_')}_conversations.pdf`;
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${sanitizedFileName}"`);
+
+    const doc = new PDFDocument({ margin: 40 });
+    doc.pipe(res);
+
+    doc.fontSize(20).font('Helvetica-Bold').text(`Conversations of ${userName}`, { align: 'center' });
+    doc.moveDown(1);
+    userConversations.forEach((conversation, index) => {
+      doc.fontSize(12).font('Helvetica-Bold').text(`Conversation ${index + 1}`, { underline: true });
+      doc.moveDown(0.5);
+
+      doc.fontSize(12).font('Helvetica-Bold').text(`User Message: `, { continued: true })
+         .font('Helvetica').text(`${conversation.user_msg || 'No user message'}`);
+      doc.fontSize(12).font('Helvetica-Bold').text(`AI Response: `, { continued: true })
+         .font('Helvetica').text(`${conversation.ai || 'No AI response'}`);
+
+      doc.moveDown(1);
+    });
+
+    doc.end();
+  } catch (error) {
+    console.error('Error generating PDF:', error);
+    res.status(500).json({ message: 'Internal server error' });
   }
 };

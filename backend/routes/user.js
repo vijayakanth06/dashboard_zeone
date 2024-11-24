@@ -17,7 +17,9 @@ router.get('/unique/names', userController.getUniqueNames);
 
 router.get('/average/scores', userController.getAverageScoresAndDurations);
 
-router.get('/export/conversations', userController.exportUserConversationsToPDF);   
+router.get('/average-scores', userController.getAverageScores);
+
+router.get('/export/conversations', userController.exportUserConversationsToPDF);
 
 
 module.exports = router;

@@ -76,7 +76,7 @@
     min-width: 110vh;
     align-items: center;
     justify-content: space-around;
-    gap: 20px; /* Adds space between items */
+    gap: 30px; /* Adds space between items */
 }
 
 /* Performance Container */

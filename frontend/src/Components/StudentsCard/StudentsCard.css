@@ -1,6 +1,6 @@
 /* Students Card Container */
 .StudentsCard-Container {
-  min-width: 25vh;
+  min-width: 30vh;
   min-height: 20vh;
   padding: 20px;
   background-color: rgba(239, 229, 229, 0.15); /* Semi-transparent background for visibility */
