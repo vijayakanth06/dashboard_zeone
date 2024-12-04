@@ -1,6 +1,58 @@
 const PDFDocument = require('pdfkit');
 const User = require('../models/User');
 const path = require('path');
+const pdfParse = require('pdf-parse');
+const Question = require('../models/questionModel'); 
+
+const getCurrentDateTime = () => {
+    const now = new Date();
+    const date = now.toISOString().split('T')[0];
+    const time = now.toTimeString().split(' ')[0]; 
+    return { date, time };
+};
+
+const extractTitle = (text) => text.match(/Title:\s*(.+)/)?.[1].trim() || 'Untitled';
+const extractDescription = (text) => text.match(/Description:\s*([\s\S]*?)Constraints:/)?.[1].trim() || 'No description provided.';
+const extractConstraints = (text) => text.match(/Constraints:\s*([\s\S]*?)Sample Test Case:/)?.[1].trim().split('\n').filter(Boolean) || [];
+const extractSampleTestCase = (text) => text.match(/Sample Test Case:\s*Input:\s*([\s\S]*?)Expected Output:/)?.[1].trim() || 'No test case provided.';
+const extractSampleOutput = (text) => text.match(/Expected Output:\s*([\s\S]*?)Answer:/)?.[1].trim() || 'No output provided.';
+const extractAnswer = (text) => text.match(/Answer \(Test Cases\):\s*([\s\S]*)/)?.[1].trim() || 'No answer provided.';
+
+const parsePDFContent = (textContent) => {
+    const questions = textContent.split(/Question\s\d+:/g).slice(1); 
+    return questions.map((block) => {
+        const { date, time } = getCurrentDateTime(); 
+        return {
+            title: extractTitle(block),
+            description: extractDescription(block),
+            constraints: extractConstraints(block),
+            sampleTestCase: extractSampleTestCase(block),
+            sampleOutput: extractSampleOutput(block),
+            answer: extractAnswer(block),
+            date,
+            time,
+        };
+    });
+};
+exports.extractpdf = async (req, res) => {
+    try {
+        const pdfFile = req.file;
+
+        if (!pdfFile) {
+            return res.status(400).send({ message: 'No PDF file provided.' });
+        }
+
+        const pdfData = await pdfParse(pdfFile.buffer);
+        const questions = parsePDFContent(pdfData.text);
+
+        const savedQuestions = await Question.insertMany(questions);
+        res.status(201).send({ message: 'Questions extracted and saved successfully!', data: savedQuestions });
+    } catch (error) {
+        res.status(500).send({ message: 'Error extracting PDF content', error: error.message });
+    }
+};
+
+
 
 exports.createUser = async (req, res) => {
   try {

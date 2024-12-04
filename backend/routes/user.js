@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
-
+const multer = require('multer');
+const upload = multer(); 
 const userController = require('../controllers/userController');
 
 router.post('/', userController.createUser)
@@ -21,5 +22,6 @@ router.get('/average-scores', userController.getAverageScores);
 
 router.get('/export/conversations', userController.exportUserConversationsToPDF);
 
+router.post('/extract/pdf', upload.single('pdf'), userController.extractpdf);
 
 module.exports = router;
