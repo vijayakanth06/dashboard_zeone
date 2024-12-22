@@ -51,9 +51,6 @@ exports.extractpdf = async (req, res) => {
         res.status(500).send({ message: 'Error extracting PDF content', error: error.message });
     }
 };
-
-
-
 exports.createUser = async (req, res) => {
   try {
     const newUser = new User(req.body);
