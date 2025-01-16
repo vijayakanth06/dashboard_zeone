@@ -2,7 +2,7 @@ const mongoose = require('mongoose');
 const dotenv = require('dotenv');
 dotenv.config();
 
-process.env.MONGO_URI = 'mongodb://localhost:27017/';
+process.env.MONGO_URI = 'mongodb+srv://vijay:vijay@zeone.hqpbf.mongodb.net/test?retryWrites=true&w=majority&appName=zeone';
 const connectDB = async () => {
   try {
     await mongoose.connect(process.env.MONGO_URI, {

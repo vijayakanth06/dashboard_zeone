@@ -11,4 +11,4 @@ const questionSchema = new mongoose.Schema({
     time: { type: String, required: true }, // Time in HH:MM:SS format
 });
 
-module.exports = mongoose.model('Question', questionSchema);
+module.exports = mongoose.model('questions', questionSchema);
